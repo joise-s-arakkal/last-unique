@@ -1,0 +1,9 @@
+{
+  "name": "last-unique",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Last Unique - multiplayer number selection game for Vercel",
+  "dependencies": {
+    "@upstash/redis": "latest"
+  }
+}

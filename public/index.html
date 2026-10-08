@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Last Unique</title>
+  <style>
+    :root { --bg:#090b12; --card:#111522; --card2:#171b2a; --text:#f5f7ff; --muted:#8e96ad; --accent:#7c5cff; --good:#2dd4a7; --bad:#ff5f7a; --line:#252b3d; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif; background:radial-gradient(circle at top,#17132d 0,#090b12 45%); color:var(--text); display:flex; justify-content:center; }
+    button,input { font:inherit; }
+    .app { width:min(960px,100%); padding:24px; }
+    .screen { min-height:calc(100vh - 48px); display:flex; align-items:center; justify-content:center; }
+    .card { width:min(620px,100%); background:rgba(17,21,34,.92); border:1px solid var(--line); border-radius:24px; padding:28px; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+    .wide { width:min(760px,100%); }
+    h1 { font-size:clamp(42px,9vw,72px); margin:0 0 10px; letter-spacing:-.06em; }
+    h2 { margin:0 0 8px; font-size:30px; }
+    p { color:var(--muted); line-height:1.6; }
+    .tag { display:inline-flex; padding:7px 11px; border:1px solid #37314f; border-radius:999px; color:#b9adff; background:#17122b; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; }
+    input { width:100%; padding:15px 16px; border-radius:14px; border:1px solid var(--line); background:#0c0f18; color:var(--text); outline:none; }
+    input:focus { border-color:var(--accent); }
+    .primary { width:100%; border:0; border-radius:14px; padding:15px 18px; margin-top:12px; background:linear-gradient(135deg,#7c5cff,#5e46db); color:white; font-weight:800; cursor:pointer; }
+    .primary:disabled { opacity:.5; cursor:not-allowed; }
+    .top { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:18px; }
+    .timer { font-size:42px; font-weight:900; letter-spacing:-.05em; }
+    .timer.danger { color:#ff6b7f; }
+    .stats { display:flex; gap:10px; flex-wrap:wrap; }
+    .stat { background:var(--card2); border:1px solid var(--line); padding:10px 13px; border-radius:12px; color:var(--muted); font-size:13px; }
+    .stat b { color:var(--text); }
+    .grid { display:grid; grid-template-columns:repeat(8,1fr); gap:7px; margin:22px 0; }
+    .cell { aspect-ratio:1; border:1px solid var(--line); border-radius:11px; background:#151a29; color:#e9ecf7; font-weight:800; cursor:pointer; transition:.12s; }
+    .cell:hover:not(:disabled) { transform:translateY(-2px); border-color:#6f60c9; background:#211d38; }
+    .cell.selected { background:linear-gradient(135deg,#7c5cff,#4e3ac1); border-color:#9d8bff; box-shadow:0 0 25px rgba(124,92,255,.25); }
+    .cell:disabled { cursor:not-allowed; opacity:.8; }
+    .selection { text-align:center; color:var(--muted); min-height:28px; }
+    .selection strong { color:var(--text); }
+    .winner { text-align:center; padding:25px 0 10px; }
+    .winner-number { font-size:90px; font-weight:1000; line-height:1; letter-spacing:-.08em; margin:12px 0; }
+    .winner-name { font-size:25px; font-weight:800; }
+    .chart { margin-top:22px; display:grid; gap:7px; }
+    .bar-row { display:grid; grid-template-columns:28px 1fr 35px; gap:8px; align-items:center; font-size:12px; color:var(--muted); }
+    .bar { height:10px; background:#242a3a; border-radius:99px; overflow:hidden; }
+    .bar > i { display:block; height:100%; background:#7c5cff; border-radius:99px; }
+    .hint { font-size:13px; color:var(--muted); margin-top:12px; text-align:center; }
+    .error { color:#ff8b9c; min-height:20px; font-size:13px; margin-top:10px; }
+    .hidden { display:none !important; }
+    @media(max-width:600px){ .app{padding:12px}.screen{min-height:calc(100vh - 24px)}.card{padding:20px;border-radius:20px}.grid{gap:5px}.cell{border-radius:8px;font-size:13px}.timer{font-size:34px}.winner-number{font-size:72px} }
+  </style>
+</head>
+<body>
+<div class="app">
+  <section id="nameScreen" class="screen">
+    <div class="card">
+      <span class="tag">50 players · 60 seconds</span>
+      <h1>Last Unique</h1>
+      <p>Pick the highest number you can — but if someone else picks the same number, both of you are eliminated.</p>
+      <input id="nameInput" maxlength="24" placeholder="Your name" autocomplete="nickname" />
+      <button id="playBtn" class="primary">PLAY</button>
+      <div id="error" class="error"></div>
+    </div>
+  </section>
+
+  <section id="queueScreen" class="screen hidden">
+    <div class="card" style="text-align:center">
+      <span class="tag">Matchmaking</span>
+      <h2>Finding a match…</h2>
+      <div id="queueCount" style="font-size:56px;font-weight:900;margin:15px 0">1</div>
+      <p id="queueText">Waiting for other players. If the room doesn't fill, bots will join automatically.</p>
+      <button id="cancelBtn" class="primary">CANCEL</button>
+    </div>
+  </section>
+
+  <section id="gameScreen" class="screen hidden">
+    <div class="card wide">
+      <div class="top">
+        <div><span class="tag">LIVE MATCH</span><div id="matchId" class="hint" style="text-align:left">—</div></div>
+        <div id="timer" class="timer">60</div>
+      </div>
+      <div class="stats">
+        <div class="stat">Players <b id="playerCount">50</b></div>
+        <div class="stat">Picked <b id="pickedCount">0</b></div>
+      </div>
+      <div id="grid" class="grid"></div>
+      <div id="selectionText" class="selection">Choose one number. Your choice will be locked.</div>
+      <div id="gameError" class="error" style="text-align:center"></div>
+    </div>
+  </section>
+
+  <section id="resultScreen" class="screen hidden">
+    <div class="card wide">
+      <div class="winner">
+        <span class="tag">MATCH FINISHED</span>
+        <h2 id="resultTitle">WINNER</h2>
+        <div id="winnerNumber" class="winner-number">—</div>
+        <div id="winnerName" class="winner-name">—</div>
+        <p id="resultMessage"></p>
+      </div>
+      <div id="chart" class="chart"></div>
+      <button id="againBtn" class="primary">PLAY AGAIN</button>
+    </div>
+  </section>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const STORAGE_NAME = 'lastUniqueName';
+const STORAGE_ID = 'lastUniquePlayerId';
+let playerId = localStorage.getItem(STORAGE_ID) || crypto.randomUUID();
+let playerName = localStorage.getItem(STORAGE_NAME) || '';
+localStorage.setItem(STORAGE_ID, playerId);
+$('nameInput').value = playerName;
+let matchId = null;
+let pollTimer = null;
+let timerTimer = null;
+let selected = null;
+
+function show(id) {
+  ['nameScreen','queueScreen','gameScreen','resultScreen'].forEach(x => $(x).classList.toggle('hidden', x !== id));
+}
+function setError(msg='') { $('error').textContent = msg; }
+function setGameError(msg='') { $('gameError').textContent = msg; }
+
+$('playBtn').onclick = joinQueue;
+$('nameInput').onkeydown = e => { if(e.key === 'Enter') joinQueue(); };
+$('cancelBtn').onclick = () => { clearPolling(); show('nameScreen'); };
+$('againBtn').onclick = joinQueue;
+
+async function joinQueue() {
+  const name = $('nameInput').value.trim();
+  if (!name) return setError('Enter your name first.');
+  playerName = name;
+  localStorage.setItem(STORAGE_NAME, name);
+  setError('');
+  show('queueScreen');
+  try {
+    const r = await fetch('/api/join', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({playerId, name}) });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Could not join');
+    if (data.match) startMatch(data.match);
+    else {
+      $('queueCount').textContent = data.queueSize || 1;
+      $('queueText').textContent = `Position ${data.position || 1}. Waiting for players — bots fill the room after a few seconds.`;
+      startQueuePolling();
+    }
+  } catch (e) {
+    show('nameScreen'); setError(e.message);
+  }
+}
+
+function startQueuePolling() {
+  clearPolling();
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/api/join', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({playerId, name:playerName}) });
+      const data = await r.json();
+      if (data.match) startMatch(data.match);
+      else $('queueCount').textContent = data.queueSize || 1;
+    } catch (_) {}
+  }, 1800);
+}
+
+async function startMatch(match) {
+  clearPolling();
+  matchId = match.id;
+  selected = match.mySelection;
+  show('gameScreen');
+  $('matchId').textContent = matchId;
+  buildGrid();
+  updateGame(match);
+  startTimer(match.endsAt);
+}
+
+function buildGrid() {
+  $('grid').innerHTML = '';
+  for(let n=1;n<=64;n++) {
+    const b = document.createElement('button');
+    b.className = 'cell'; b.textContent = n; b.dataset.number = n;
+    b.onclick = () => choose(n);
+    $('grid').appendChild(b);
+  }
+}
+
+async function choose(n) {
+  if (selected != null) return;
+  setGameError('');
+  try {
+    const r = await fetch('/api/select', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({matchId, playerId, number:n})});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Selection failed');
+    selected = n;
+    updateGame(data.match);
+  } catch(e) { setGameError(e.message); }
+}
+
+function updateGame(match) {
+  $('playerCount').textContent = match.playerCount;
+  $('pickedCount').textContent = match.selectedCount;
+  selected = match.mySelection;
+  document.querySelectorAll('.cell').forEach(b => {
+    const n = Number(b.dataset.number);
+    b.disabled = selected != null || match.status !== 'ACTIVE';
+    b.classList.toggle('selected', n === selected);
+  });
+  $('selectionText').innerHTML = selected == null ? 'Choose one number. <strong>Your choice will be locked.</strong>' : `You selected <strong>${selected}</strong>. Your choice is locked.`;
+}
+
+function startTimer(endsAt) {
+  clearInterval(timerTimer);
+  const tick = () => {
+    const remaining = Math.max(0, Math.ceil((endsAt - Date.now())/1000));
+    $('timer').textContent = String(remaining).padStart(2,'0');
+    $('timer').classList.toggle('danger', remaining <= 10);
+    if (remaining <= 0) {
+      clearInterval(timerTimer);
+      fetchState();
+    }
+  };
+  tick(); timerTimer = setInterval(tick, 250);
+  clearPolling();
+  pollTimer = setInterval(fetchState, 1200);
+}
+
+async function fetchState() {
+  if (!matchId) return;
+  try {
+    const r = await fetch(`/api/state?matchId=${encodeURIComponent(matchId)}&playerId=${encodeURIComponent(playerId)}`);
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Could not load game');
+    if (data.match.status === 'FINISHED') showResult(data.match);
+    else updateGame(data.match);
+  } catch (_) {}
+}
+
+function showResult(match) {
+  clearPolling(); clearInterval(timerTimer);
+  show('resultScreen');
+  const winner = match.winner;
+  if (!winner) {
+    $('resultTitle').textContent = 'NO WINNER';
+    $('winnerNumber').textContent = '—';
+    $('winnerName').textContent = 'Everyone collided';
+    $('resultMessage').textContent = 'There was no unique selection. Nobody wins this round.';
+  } else {
+    $('resultTitle').textContent = winner.playerId === playerId ? '🏆 YOU WON' : 'WINNER';
+    $('winnerNumber').textContent = winner.number;
+    $('winnerName').textContent = winner.playerName;
+    $('resultMessage').textContent = `${winner.playerName} was the highest player with a unique choice.`;
+  }
+  renderChart(match.selectionCounts || {});
+}
+
+function renderChart(counts) {
+  const entries = Object.entries(counts).map(([n,c])=>[Number(n),c]).sort((a,b)=>b[0]-a[0]).slice(0,15);
+  const max = Math.max(1,...entries.map(x=>x[1]));
+  $('chart').innerHTML = entries.map(([n,c]) => `<div class="bar-row"><span>${n}</span><div class="bar"><i style="width:${(c/max)*100}%"></i></div><span>${c}</span></div>`).join('');
+}
+function clearPolling(){ if(pollTimer){clearInterval(pollTimer);pollTimer=null;} }
+
+if (playerName) setError('');
+</script>
+</body>
+</html>
